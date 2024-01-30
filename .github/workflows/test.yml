@@ -1,0 +1,29 @@
+name: Test
+"on":
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+  pull_request:
+jobs:
+  Test:
+    runs-on: "${{ matrix.os }}"
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+        python-version:
+          - "3.11"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+      - run: pip install -e . -r requirements.txt pytest-xdist pytest-cov
+      - run: py.test -n auto -vv --cov .
+      - uses: codecov/codecov-action@v3
