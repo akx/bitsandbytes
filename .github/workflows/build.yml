@@ -35,19 +35,17 @@ jobs:
     - name: Setup Mambaforge
       uses: conda-incubator/setup-miniconda@v3.0.1
       with:
+        activate-environment: bnb-env
+        auto-activate-base: true
+        channels: conda-forge,pytorch,nvidia
+        mamba-version: "*"
         miniforge-variant: Mambaforge
         miniforge-version: latest
-        activate-environment: bnb-env
-        use-mamba: true
-
-    - uses: conda-incubator/setup-miniconda@v3.0.1
-      with:
-        auto-update-conda: true
-        activate-environment: bnb-env
-        use-only-tar-bz2: false
-        auto-activate-base: true
         python-version: "3.11"  # cuda-python has no 3.12 compatibility
-        mamba-version: "*"
+        use-mamba: true
+        use-only-tar-bz2: false
+
+    # TODO: cache Conda packages so it doesn't need to redownload them?
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
