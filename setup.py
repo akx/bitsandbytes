@@ -35,6 +35,11 @@ setup(
     },
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
+    python_requires=">=3.10",
+    # cp310 wheels can be installed on cp310 and later (see `pip debug --verbose` on your CPython installation)
+    # so it should be safe to force this here.  Besides, we don't actually have any extension module that would
+    # link against a Python API.
+    options={"bdist_wheel": {"python_tag": "cp310"}},
     # HACK: pretend we have a native extension module so the wheel is tagged
     #       correctly with a platform tag (e.g. `-linux_x86_64.whl`).
     ext_modules=[Extension("bitsandbytes", sources=[], language="c")],
