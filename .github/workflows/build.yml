@@ -1,4 +1,4 @@
-name: CMake on multiple platforms
+name: Build
 
 on:
   push:
@@ -6,8 +6,12 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  build-native:
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -16,29 +20,11 @@ jobs:
 
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ['3.10', '3.11']
         cuda-version: ['11.8', '12.1']
         build_type: [Release]
-        c_compiler: [gcc, cl]
-        include:
-          - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-        exclude:
-          - os: ubuntu-latest
-            c_compiler: cl
-          - os: windows-latest
-            c_compiler: gcc
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
 
     - name: Set up MSVC
       if: matrix.os == 'windows-latest'
@@ -58,10 +44,9 @@ jobs:
       with:
         auto-update-conda: true
         activate-environment: bnb-env
-        environment-file: environment-bnb.yml
         use-only-tar-bz2: false
         auto-activate-base: true
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.11"  # cuda-python has no 3.12 compatibility
         mamba-version: "*"
 
     - name: Set reusable strings
@@ -97,38 +82,41 @@ jobs:
         echo CUDA_PATH=$CUDA_HOME >> "$GITHUB_ENV"
 
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            echo DCMAKE_CXX_COMPILER=cl >> "$GITHUB_ENV"
+            echo DCMAKE_C_COMPILER=cl >> "$GITHUB_ENV"
             # without -DCMAKE_CUDA_COMPILER=nvcc, cmake config always fail for cuda-11.8
             echo DCMAKE_CUDA_COMPILER=-DCMAKE_CUDA_COMPILER=nvcc >> "$GITHUB_ENV"
+        else
+            echo DCMAKE_CXX_COMPILER=g++ >> "$GITHUB_ENV"
+            echo DCMAKE_C_COMPILER=gcc >> "$GITHUB_ENV"
         fi
 
         nvcc --version
 
-    - name: Update environment
-      run: mamba env update -n bnb-env -f environment-bnb.yml
-
     - name: Prep build
-      run: python -m pip install cmake==3.27.9 ninja setuptools wheel
+      run: python -m pip install cmake==3.27.9 ninja
 
-    - name: Configure CMake
+    # TODO: the following steps (CUDA, NOBLASLT, CPU) could be moved to the matrix, so they're built in parallel
+
+    - name: Configure CUDA
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja ${{ env.DCMAKE_CUDA_COMPILER }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_CXX_COMPILER=${{ env.DCMAKE_CXX_COMPILER }}
+        -DCMAKE_C_COMPILER=${{ env.DCMAKE_C_COMPILER }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DCOMPUTE_CAPABILITY="50;52;60;61;62;70;72;75;80;86;87;89;90"
         -S ${{ github.workspace }}
 
     - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
     - name: Configure NOBLASLT
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja ${{ env.DCMAKE_CUDA_COMPILER }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_CXX_COMPILER=${{ env.DCMAKE_CXX_COMPILER }}
+        -DCMAKE_C_COMPILER=${{ env.DCMAKE_C_COMPILER }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DCOMPUTE_CAPABILITY="50;52;60;61;62;70;72;75;80;86;87;89;90"
         -DNO_CUBLASLT=ON
@@ -141,8 +129,8 @@ jobs:
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja ${{ env.DCMAKE_CUDA_COMPILER }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_CXX_COMPILER=${{ env.DCMAKE_CXX_COMPILER }}
+        -DCMAKE_C_COMPILER=${{ env.DCMAKE_C_COMPILER }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DNO_CUBLASLT=ON
         -DBUILD_CUDA=OFF
@@ -151,13 +139,34 @@ jobs:
     - name: Build CPU
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --build-config ${{ matrix.build_type }}
+    - name: Upload Native Libraries
+      uses: actions/upload-artifact@v4
+      with:
+        name: native-${{ matrix.os }}-cuda${{ matrix.cuda-version }}
+        path: bitsandbytes/*.{dll,so,dylib}
 
-    - name: Build dist
+  build-wheel:
+    needs:
+      - build-native
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        cuda-version: ['11.8', '12.1']
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3'  # Newest Python 3.x version
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: native-${{ matrix.os }}-${{ matrix.cuda-version }}
+        path: bitsandbytes
+
+    - name: Package wheel
       shell: bash -el {0}
       run: |
         python -m pip install build
@@ -165,9 +174,7 @@ jobs:
         mkdir dist/cu${{ matrix.cuda-version }}
         mv dist/bitsandbytes*.* dist/cu${{ matrix.cuda-version }}/
 
-    - name: Upload Build Artifacts
-      uses: actions/upload-artifact@v4.3.0
+    - uses: actions/upload-artifact@v4
       with:
-        name: bitsandbytes-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.cuda-version }}
-        path: |
-          ${{ github.workspace }}/dist/
+        name: bitsandbytes-${{ matrix.os }}-cuda${{ matrix.cuda-version }}
+        path: dist/*.whl
