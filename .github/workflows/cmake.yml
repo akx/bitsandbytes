@@ -90,9 +90,6 @@ jobs:
 
         nvcc --version
 
-    - name: Update environment
-      run: mamba env update -n bnb-env -f environment-bnb.yml
-
     - name: Prep build
       run: python -m pip install cmake==3.27.9 ninja setuptools wheel
 
