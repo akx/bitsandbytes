@@ -58,7 +58,7 @@ jobs:
         fi
         if [ "${{ matrix.variant }}" = "CUDA" ]; then
             echo "cmake_args=" >> "$GITHUB_OUTPUT"
-        elif [ "${{ matrix.variant }}" = "NOBLASLT" ]; then
+        else if [ "${{ matrix.variant }}" = "NOBLASLT" ]; then
             echo "cmake_args=-DNO_CUBLASLT=ON" >> "$GITHUB_OUTPUT"
         else if [ "${{ matrix.variant }}" = "CPU" ]; then
             echo "-DNO_CUBLASLT=ON -DBUILD_CUDA=OFF" >> "$GITHUB_OUTPUT"
