@@ -44,7 +44,7 @@ jobs:
       with:
         auto-update-conda: true
         activate-environment: bnb-env
-        environment-file: environment-bnb.yml
+        channels: conda-forge,pytorch,nvidia
         use-only-tar-bz2: false
         auto-activate-base: true
         python-version: "3.10"
