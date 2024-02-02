@@ -37,12 +37,12 @@ jobs:
         python-version: '3.10'
 
     - uses: Jimver/cuda-toolkit@v0.2.14
-      if: ${{ matrix.cuda-version }} == '11.8'
+      if: ${{ matrix.cuda-version == '11.8' }}
       with:
         cuda: '11.8.0'
 
     - uses: Jimver/cuda-toolkit@v0.2.14
-      if: ${{ matrix.cuda-version }} == '12.1'
+      if: ${{ matrix.cuda-version == '12.1' }}
       with:
         cuda: '12.1.1'
 
