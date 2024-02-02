@@ -36,22 +36,20 @@ jobs:
       with:
         python-version: '3.10'
 
-    - uses: Jimver/cuda-toolkit@v0.2.14
-      if: ${{ matrix.cuda-version == '11.8' }}
-      with:
-        cuda: '11.8.0'
-
-    - uses: Jimver/cuda-toolkit@v0.2.14
-      if: ${{ matrix.cuda-version == '12.1' }}
-      with:
-        cuda: '12.1.1'
-
-    - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
-      id: strings
+    - id: strings
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        if [ "${{ matrix.cuda-version }}" = "11.8" ]; then
+            echo "cuda-toolkit-version=11.8.0" >> "$GITHUB_OUTPUT"
+        else
+            echo "cuda-toolkit-version=12.1.1" >> "$GITHUB_OUTPUT"
+        fi
+
+    - uses: Jimver/cuda-toolkit@v0.2.14
+      name: Install CUDA Toolkit ${{ steps.strings.outputs.cuda-toolkit-version }}
+      with:
+        cuda: ${{ steps.strings.outputs.cuda-toolkit-version }}
 
     - name: Prepare
       shell: bash -el {0}
