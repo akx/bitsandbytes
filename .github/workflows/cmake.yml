@@ -32,19 +32,19 @@ jobs:
       with:
         arch: amd64
 
-    - name: Setup Mambaforge
-      uses: conda-incubator/setup-miniconda@v3.0.1
+    - uses: actions/setup-python@v5
       with:
-        miniforge-variant: Mambaforge
-        miniforge-version: latest
-        use-mamba: true
-        auto-update-conda: true
-        activate-environment: bnb-env
-        channels: conda-forge,pytorch,nvidia
-        use-only-tar-bz2: false
-        auto-activate-base: true
-        python-version: "3.10"
-        mamba-version: "*"
+        python-version: '3.10'
+
+    - uses: Jimver/cuda-toolkit@v0.2.14
+      if: ${{ matrix.cuda-version }} == '11.8'
+      with:
+        cuda: '11.8.0'
+
+    - uses: Jimver/cuda-toolkit@v0.2.14
+      if: ${{ matrix.cuda-version }} == '12.1'
+      with:
+        cuda: '12.1.1'
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
@@ -53,31 +53,9 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: CUDA Toolkit
+    - name: Prepare
       shell: bash -el {0}
       run: |
-        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            # to prepare space
-            sudo rm -rf /usr/share/dotnet
-            sudo rm -rf /opt/ghc
-            sudo rm -rf /usr/local/share/boost
-        fi
-        addon=""
-        cuda_version=${{ matrix.cuda-version }}
-        [ "$cuda_version" = "12.1" ] && [ "${{ matrix.os }}" = "ubuntu-latest" ] && addon="cuda-cudart-static cuda-nvrtc"
-        [ "$cuda_version" = "12.1" ] && [ "${{ matrix.os }}" = "windows-latest" ] && addon="cuda-nvrtc"
-        [ "$cuda_version" = "11.8" ] && cuda_version="11.8.0"
-        [ "$cuda_version" = "12.1" ] && cuda_version="12.1.1"
-
-        mamba install pytorch-cuda=${{ matrix.cuda-version }} -c pytorch # it's dependency not correctly resolved sometime
-        mamba install cuda-python=${{ matrix.cuda-version }} cuda-libraries-dev cuda-nvcc cuda-nvtx cuda-cupti cuda-cudart cuda-cudart-dev cuda-runtime cuda-libraries $addon -c "nvidia/label/cuda-$cuda_version"
-
-        [ "${{ matrix.os }}" = "windows-latest" ] && mamba install "clang>=17.0.6" "clangxx>=17.0.6" -c conda-forge
-
-        CUDA_HOME="${{ env.CONDA }}/envs/bnb-env"
-        echo CUDA_HOME=$CUDA_HOME >> "$GITHUB_ENV"
-        echo CUDA_PATH=$CUDA_HOME >> "$GITHUB_ENV"
-
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
             echo CXX_COMPILER=cl >> "$GITHUB_ENV"
             echo C_COMPILER=cl >> "$GITHUB_ENV"
