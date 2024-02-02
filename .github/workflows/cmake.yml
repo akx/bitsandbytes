@@ -22,6 +22,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         cuda-version: ['11.8', '12.1']
         build_type: [Release]
+        variant: [CUDA, NOBLASLT, CPU]
 
     steps:
     - uses: actions/checkout@v4
@@ -36,7 +37,8 @@ jobs:
       with:
         python-version: '3.10'
 
-    - id: strings
+    - name: Prepare
+      id: strings
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
@@ -45,15 +47,6 @@ jobs:
         else
             echo "cuda-toolkit-version=12.1.1" >> "$GITHUB_OUTPUT"
         fi
-
-    - uses: Jimver/cuda-toolkit@v0.2.14
-      name: Install CUDA Toolkit ${{ steps.strings.outputs.cuda-toolkit-version }}
-      with:
-        cuda: ${{ steps.strings.outputs.cuda-toolkit-version }}
-
-    - name: Prepare
-      shell: bash -el {0}
-      run: |
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
             echo CXX_COMPILER=cl >> "$GITHUB_ENV"
             echo C_COMPILER=cl >> "$GITHUB_ENV"
@@ -63,15 +56,25 @@ jobs:
             echo CXX_COMPILER=g++ >> "$GITHUB_ENV"
             echo C_COMPILER=gcc >> "$GITHUB_ENV"
         fi
+        if [ "${{ matrix.variant }}" = "CUDA" ]; then
+            echo "cmake_args=" >> "$GITHUB_OUTPUT"
+        elif [ "${{ matrix.variant }}" = "NOBLASLT" ]; then
+            echo "cmake_args=-DNO_CUBLASLT=ON" >> "$GITHUB_OUTPUT"
+        else if [ "${{ matrix.variant }}" = "CPU" ]; then
+            echo "-DNO_CUBLASLT=ON -DBUILD_CUDA=OFF" >> "$GITHUB_OUTPUT"
+        else
+            echo "Unknown variant" && exit 1
+        fi
 
-        nvcc --version
+    - uses: Jimver/cuda-toolkit@v0.2.14
+      name: Install CUDA Toolkit ${{ steps.strings.outputs.cuda-toolkit-version }}
+      with:
+        cuda: ${{ steps.strings.outputs.cuda-toolkit-version }}
 
     - name: Prep build
       run: python -m pip install cmake==3.27.9 ninja setuptools wheel
 
-    # TODO: the following steps (CUDA, NOBLASLT, CPU) could be moved to the matrix, so they're built in parallel
-
-    - name: Configure CUDA
+    - name: Configure
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -G Ninja ${{ env.DCMAKE_CUDA_COMPILER }}
@@ -79,50 +82,17 @@ jobs:
         -DCMAKE_C_COMPILER=${{ env.C_COMPILER }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DCOMPUTE_CAPABILITY="50;52;60;61;62;70;72;75;80;86;87;89;90"
+        ${{ steps.strings.outputs.cmake_args }}
         -S ${{ github.workspace }}
 
-    - name: Build CUDA
+    - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Configure NOBLASLT
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -G Ninja ${{ env.DCMAKE_CUDA_COMPILER }}
-        -DCMAKE_CXX_COMPILER=${{ env.CXX_COMPILER }}
-        -DCMAKE_C_COMPILER=${{ env.C_COMPILER }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DCOMPUTE_CAPABILITY="50;52;60;61;62;70;72;75;80;86;87;89;90"
-        -DNO_CUBLASLT=ON
-        -S ${{ github.workspace }}
-
-    - name: Build NOBLASLT
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
-
-    - name: Configure CPU
-      run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -G Ninja ${{ env.DCMAKE_CUDA_COMPILER }}
-        -DCMAKE_CXX_COMPILER=${{ env.CXX_COMPILER }}
-        -DCMAKE_C_COMPILER=${{ env.C_COMPILER }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DNO_CUBLASLT=ON
-        -DBUILD_CUDA=OFF
-        -S ${{ github.workspace }}
-
-    - name: Build CPU
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
-
-    - name: Build dist
-      shell: bash -el {0}
-      run: |
-        python -m pip install build
-        python -m build --wheel
-        mkdir dist/cu${{ matrix.cuda-version }}
-        mv dist/bitsandbytes*.* dist/cu${{ matrix.cuda-version }}/
+    - run: ls -laR
 
     - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4.3.0
       with:
-        name: bitsandbytes-${{ matrix.os }}-${{ matrix.cuda-version }}
+        name: bitsandbytes-${{ matrix.os }}-${{ matrix.cuda-version }}-${{ matrix.variant }}
         path: |
-          ${{ github.workspace }}/dist/
+          ${{ github.workspace }}/build/
