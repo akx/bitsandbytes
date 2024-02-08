@@ -27,3 +27,10 @@ __pdoc__ = {
 __version__ = "0.43.0.dev"
 
 PACKAGE_GITHUB_URL = "https://github.com/TimDettmers/bitsandbytes"
+
+
+
+if COMPILED_WITH_CUDA:
+    from .backends import register_backend
+    from .backends.cuda import CUDABackend
+    register_backend("cuda", CUDABackend())
