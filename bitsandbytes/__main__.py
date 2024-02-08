@@ -57,9 +57,8 @@ def print_debug_info() -> None:
 
 def main():
     generate_bug_report_information()
-
     from . import COMPILED_WITH_CUDA
-    from .cuda_setup.main import get_compute_capabilities
+    from .device_setup.cuda.main import get_compute_capabilities
 
     print_header("OTHER")
     print(f"COMPILED_WITH_CUDA = {COMPILED_WITH_CUDA}")
