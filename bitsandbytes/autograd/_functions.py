@@ -159,20 +159,12 @@ class MatMul8bit(torch.autograd.Function):
                     )
                     if not A.is_contiguous():
                         A = A.contiguous()
-                    qA, S2 = F.vectorwise_quant(
-                        A.view(-1, A.shape[2]), dim=0, quant_type=quant_type
-                    )
+                    qA, S2 = F.vectorwise_quant(A.view(-1, A.shape[2]), dim=0, quant_type=quant_type)
                     igrad_B = F.igemm(qA.t(), qgrad_output)
-                    grad_B = F.vectorwise_mm_dequant(
-                        igrad_B, S2.t(), S1, grad_output.dtype, quant_type
-                    )
+                    grad_B = F.vectorwise_mm_dequant(igrad_B, S2.t(), S1, grad_output.dtype, quant_type)
                 else:
-                    qgrad_output, S1 = F.vectorwise_quant(
-                        grad_output, dim=dims, quant_type=quant_type
-                    )
-                    qA, S2 = F.vectorwise_quant(
-                        A, dim=dims, quant_type=quant_type
-                    )
+                    qgrad_output, S1 = F.vectorwise_quant(grad_output, dim=dims, quant_type=quant_type)
+                    qA, S2 = F.vectorwise_quant(A, dim=dims, quant_type=quant_type)
                     igrad_B = F.igemm(qA.permute(permute_dim), qgrad_output)
                     grad_B = F.vectorwise_mm_dequant(
                         igrad_B,
@@ -201,9 +193,7 @@ class MatMul8bit(torch.autograd.Function):
                 with torch.no_grad():
                     grad_A = torch.matmul(grad_output, B.permute(permute_dim))
             else:
-                qgrad_output, S1 = F.vectorwise_quant(
-                    grad_output, dim=dims, quant_type=quant_type
-                )
+                qgrad_output, S1 = F.vectorwise_quant(grad_output, dim=dims, quant_type=quant_type)
                 qB, S3 = F.vectorwise_quant(B, dim=dim_B, quant_type=quant_type)
                 igrad_A = F.igemm(qgrad_output, qB.permute(permute_dim))
                 grad_A = F.vectorwise_mm_dequant(

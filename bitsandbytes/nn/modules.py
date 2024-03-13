@@ -89,9 +89,7 @@ class StableEmbedding(torch.nn.Embedding):
             dtype,
         )
         self.norm = torch.nn.LayerNorm(embedding_dim, device=device)
-        GlobalOptimManager.get_instance().register_module_override(
-            self, "weight", {"optim_bits": 32}
-        )
+        GlobalOptimManager.get_instance().register_module_override(self, "weight", {"optim_bits": 32})
 
     def reset_parameters(self) -> None:
         torch.nn.init.xavier_uniform_(self.weight)
@@ -172,9 +170,7 @@ class Embedding(torch.nn.Embedding):
             _weight,
             device=device
         )
-        GlobalOptimManager.get_instance().register_module_override(
-            self, "weight", {"optim_bits": 32}
-        )
+        GlobalOptimManager.get_instance().register_module_override(self, "weight", {"optim_bits": 32})
 
     def reset_parameters(self) -> None:
         torch.nn.init.xavier_uniform_(self.weight)
@@ -295,7 +291,7 @@ class Params4bit(torch.nn.Parameter):
         return self.to(device='cuda' if device is None else device, non_blocking=non_blocking)
 
     @overload
-    def to(self: T, device: Optional[Union[int, device]] = ..., dtype: Optional[Union[dtype, str]] = ..., non_blocking: bool = ...,) -> T:
+    def to(self: T, device: Optional[Union[int, device]] = ..., dtype: Optional[Union[dtype, str]] = ..., non_blocking: bool = ...) -> T:
         ...
 
     @overload
@@ -526,9 +522,7 @@ class Int8Params(torch.nn.Parameter):
         ...
 
     def to(self, *args, **kwargs):
-        device, dtype, non_blocking, convert_to_format = torch._C._nn._parse_to(
-            *args, **kwargs
-        )
+        device, dtype, non_blocking, convert_to_format = torch._C._nn._parse_to(*args, **kwargs)
 
         if (
             device is not None
@@ -538,9 +532,7 @@ class Int8Params(torch.nn.Parameter):
             return self.cuda(device)
         else:
             new_param = Int8Params(
-                super().to(
-                    device=device, dtype=dtype, non_blocking=non_blocking
-                ),
+                super().to(device=device, dtype=dtype, non_blocking=non_blocking),
                 requires_grad=self.requires_grad,
                 has_fp16_weights=self.has_fp16_weights,
             )
@@ -733,9 +725,7 @@ class SwitchBackLinearBnb(nn.Linear):
         index=None,
         device=None
     ):
-        super().__init__(
-            input_features, output_features, bias, device
-        )
+        super().__init__(input_features, output_features, bias, device)
         self.state = bnb.MatmulLtState()
         self.index = index
 

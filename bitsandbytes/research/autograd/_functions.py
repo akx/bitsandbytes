@@ -216,9 +216,7 @@ class SwitchBackBnb(torch.autograd.Function):
         # 1. Quantize A
         if len(A.shape) == 3:
             A = A.view(-1, A.shape[-1]).contiguous()
-        CA, CAt, SCA, SCAt, coo_tensorA = F.double_quant(
-            A.to(torch.float16), threshold=state.threshold
-        )
+        CA, CAt, SCA, SCAt, coo_tensorA = F.double_quant(A.to(torch.float16), threshold=state.threshold)
 
         if state.threshold > 0.0 and coo_tensorA is not None:
             if state.has_fp16_weights:
@@ -342,9 +340,7 @@ class SwitchBackBnb(torch.autograd.Function):
 
         # Cast grad_output to fp16
         if len(grad_output.shape) == 3:
-            grad_output = grad_output.reshape(
-                -1, grad_output.shape[-1]
-            ).contiguous()
+            grad_output = grad_output.reshape(-1, grad_output.shape[-1]).contiguous()
 
         Cgrad, Cgradt, SCgrad, SCgradt, coo_tensor = F.double_quant(grad_output.to(torch.float16))
 
@@ -357,9 +353,7 @@ class SwitchBackBnb(torch.autograd.Function):
             if state.CBt is not None:
                 C32grad, Sgrad = F.transform(Cgrad, "col32")
                 if state.CxBt is None:
-                    state.CxBt, state.SBt = F.transform(
-                        state.CBt, to_order=formatB, transpose=True
-                    )
+                    state.CxBt, state.SBt = F.transform(state.CBt, to_order=formatB, transpose=True)
                 # print('back B shape', state.CxBt.shape)
                 # print('back grad shape', C32grad.shape)
                 gradA32, SgradA32 = F.igemmlt(C32grad, state.CxBt, Sgrad, state.SBt)

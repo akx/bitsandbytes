@@ -219,9 +219,7 @@ class LinearFunction(torch.autograd.Function):
             weight8, S1 = LinearFunction.quant(weight, args.quant_type, dim=1)
             x8, S2 = LinearFunction.quant(x, args.quant_type, dim=2)
             outputq = bnb.functional.igemm(x8, weight8.t())
-            output = LinearFunction.dequant(
-                outputq, S1, S2, x.dtype, args.quant_type
-            )
+            output = LinearFunction.dequant(outputq, S1, S2, x.dtype, args.quant_type)
             # if torch.rand(1) < 0.01:
             # output32 = torch.matmul(x, weight.t())
             # err = torch.abs(output-output32).float()
@@ -250,37 +248,25 @@ class LinearFunction(torch.autograd.Function):
         # weight and x are already 8bit
         # -> transform grad_output to 8-bit
         if args.use_8bit_training == "forward+wgrad":
-            grad_output8, S1 = LinearFunction.quant(
-                grad_output, args.quant_type, dim=[0, 1]
-            )
+            grad_output8, S1 = LinearFunction.quant(grad_output, args.quant_type, dim=[0, 1])
             x8, S2 = LinearFunction.quant(x, args.quant_type, dim=[0, 1])
             grad_weight8 = bnb.functional.igemm(grad_output8, x8)
-            grad_weight = LinearFunction.dequant(
-                grad_weight8, S1, S2, grad_output.dtype, args.quant_type
-            )
+            grad_weight = LinearFunction.dequant(grad_weight8, S1, S2, grad_output.dtype, args.quant_type)
 
             # grad_weight32 = torch.einsum('bso,bsi->oi', grad_output, x)
 
             grad_input = grad_output.matmul(weight)
         elif args.use_8bit_training == "full":
-            grad_output8, S1 = LinearFunction.quant(
-                grad_output, args.quant_type, dim=[0, 1]
-            )
+            grad_output8, S1 = LinearFunction.quant(grad_output, args.quant_type, dim=[0, 1])
             x8, S2 = LinearFunction.quant(x, args.quant_type, dim=[0, 1])
             grad_weight8 = torch.zeros_like(weight, dtype=torch.int32)
             bnb.functional.igemm(grad_output8, x8, out=grad_weight8)
-            grad_weight = LinearFunction.dequant(
-                grad_weight8, S1, S2, grad_output.dtype, args.quant_type
-            )
+            grad_weight = LinearFunction.dequant(grad_weight8, S1, S2, grad_output.dtype, args.quant_type)
 
-            grad_output8, S1 = LinearFunction.quant(
-                grad_output, args.quant_type, dim=2
-            )
+            grad_output8, S1 = LinearFunction.quant(grad_output, args.quant_type, dim=2)
             weight8, S3 = LinearFunction.quant(weight, args.quant_type, dim=0)
             grad_input8 = bnb.functional.igemm(grad_output8, weight8)
-            grad_input = LinearFunction.dequant(
-                grad_input8, S1, S3, grad_output.dtype, args.quant_type
-            )
+            grad_input = LinearFunction.dequant(grad_input8, S1, S3, grad_output.dtype, args.quant_type)
 
         else:
             grad_input = grad_output.matmul(weight)
@@ -356,12 +342,8 @@ def test_linear8bitlt_accumulated_gradient():
             opt1.zero_grad(True)
             opt2.step()
             opt2.zero_grad(True)
-            assert_all_approx_close(
-                l1[0].weight, l2[0].weight, rtol=1.05, atol=0.01, count=2
-            )
-            assert_all_approx_close(
-                l1[1].weight, l2[1].weight, rtol=1.05, atol=0.01, count=2
-            )
+            assert_all_approx_close(l1[0].weight, l2[0].weight, rtol=1.05, atol=0.01, count=2)
+            assert_all_approx_close(l1[1].weight, l2[1].weight, rtol=1.05, atol=0.01, count=2)
             # we do this copy because otherwise we have small divergences over time that add up
             l1[0].weight.data.copy_(l2[0].weight.data)
             l1[1].weight.data.copy_(l2[1].weight.data)

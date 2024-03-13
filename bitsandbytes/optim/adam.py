@@ -293,9 +293,7 @@ class AnalysisAdam(torch.optim.Optimizer):
                 if grad.dtype in {torch.float16, torch.bfloat16}:
                     grad = grad.float()
                 if grad.is_sparse:
-                    raise RuntimeError(
-                        "Adam does not support sparse gradients, please consider SparseAdam instead"
-                    )
+                    raise RuntimeError("Adam does not support sparse gradients, please consider SparseAdam instead")
                 amsgrad = group.get("amsgrad", False)
                 assert not amsgrad
 
@@ -312,15 +310,9 @@ class AnalysisAdam(torch.optim.Optimizer):
                     state["exp_avg"] = torch.zeros_like(p_data_fp32)
                     # Exponential moving average of squared gradient values
                     state["exp_avg_sq"] = torch.zeros_like(p_data_fp32)
-                    state["abserrors"] = torch.zeros(
-                        (256, 256), device=p_data_fp32.device
-                    )
-                    state["relerrors"] = torch.zeros(
-                        (256, 256), device=p_data_fp32.device
-                    )
-                    state["counts"] = torch.zeros(
-                        (256, 256), device=p_data_fp32.device
-                    )
+                    state["abserrors"] = torch.zeros((256, 256), device=p_data_fp32.device)
+                    state["relerrors"] = torch.zeros((256, 256), device=p_data_fp32.device)
+                    state["counts"] = torch.zeros((256, 256), device=p_data_fp32.device)
                     if amsgrad:
                         # Maintains max of all exp. moving avg. of sq. grad. values
                         state["max_exp_avg_sq"] = torch.zeros_like(p_data_fp32)
@@ -328,9 +320,7 @@ class AnalysisAdam(torch.optim.Optimizer):
                     state["exp_avg"] = state["exp_avg"].to(p_data_fp32)
                     state["exp_avg_sq"] = state["exp_avg_sq"].to(p_data_fp32)
                     if amsgrad:
-                        state["max_exp_avg_sq"] = state["max_exp_avg_sq"].to(
-                            p_data_fp32
-                        )
+                        state["max_exp_avg_sq"] = state["max_exp_avg_sq"].to(p_data_fp32)
 
                 state["step"] += 1
                 beta1, beta2 = group["betas"]
@@ -344,9 +334,7 @@ class AnalysisAdam(torch.optim.Optimizer):
                 counts = state["counts"]
 
                 if group["weight_decay"] != 0:
-                    p_data_fp32.add_(
-                        p_data_fp32, alpha=-group["weight_decay"] * group["lr"]
-                    )
+                    p_data_fp32.add_(p_data_fp32, alpha=-group["weight_decay"] * group["lr"])
 
                 exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
                 if amsgrad:
@@ -402,7 +390,7 @@ class AnalysisAdam(torch.optim.Optimizer):
                         # Error will be calculated automatically!
                     else:
                         raise ValueError(
-                            f"Invalid analysis value: {self.analysis}!"
+                            f"Invalid analysis value: {self.analysis}!",
                         )
 
                     denom = state2.sqrt().add_(group["eps"])
@@ -415,9 +403,7 @@ class AnalysisAdam(torch.optim.Optimizer):
 
                     F.histogram_scatter_add_2d(e, C1.int(), C2.int(), abserr)
                     F.histogram_scatter_add_2d(rele, C1.int(), C2.int(), relerr)
-                    F.histogram_scatter_add_2d(
-                        counts, C1.int(), C2.int(), torch.ones_like(abserr)
-                    )
+                    F.histogram_scatter_add_2d(counts, C1.int(), C2.int(), torch.ones_like(abserr))
 
                     p_data_fp32 += -step_size * update_fp32
 
@@ -425,18 +411,10 @@ class AnalysisAdam(torch.optim.Optimizer):
                         if self.savedir != "" and state["step"] % 100 == 0:
                             if not os.path.exists(self.savedir):
                                 os.makedirs(self.savedir)
-                            shapestr = "_".join(
-                                [str(dim) for dim in p_data_fp32.shape]
-                            )
-                            pathe = os.path.join(
-                                self.savedir, f"{p_id}_{shapestr}_abserr.pkl"
-                            )
-                            pathrele = os.path.join(
-                                self.savedir, f"{p_id}_{shapestr}_relerr.pkl"
-                            )
-                            pathcounts = os.path.join(
-                                self.savedir, f"{p_id}_{shapestr}_counts.pkl"
-                            )
+                            shapestr = "_".join([str(dim) for dim in p_data_fp32.shape])
+                            pathe = os.path.join(self.savedir, f"{p_id}_{shapestr}_abserr.pkl")
+                            pathrele = os.path.join(self.savedir, f"{p_id}_{shapestr}_relerr.pkl")
+                            pathcounts = os.path.join(self.savedir, f"{p_id}_{shapestr}_counts.pkl")
                             torch.save(e, pathe)
                             torch.save(rele, pathrele)
                             torch.save(counts, pathcounts)

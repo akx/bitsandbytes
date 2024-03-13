@@ -37,9 +37,7 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
             dimB = (dim3, dim4) if not transpose[1] else (dim4, dim3)
             A = torch.randn(size=dimA, device="cuda", requires_grad=req_grad[0])
             B = torch.randn(size=dimB, device="cuda", requires_grad=req_grad[1])
-            target = torch.randn(
-                size=(dim2, dim4), device="cuda", requires_grad=req_grad[1]
-            )
+            target = torch.randn(size=(dim2, dim4), device="cuda", requires_grad=req_grad[1])
             torch.nn.init.xavier_uniform_(B)
 
             if not transpose[0] and not transpose[1]:
@@ -71,9 +69,7 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
                 A.grad = None
                 B.grad = None
 
-                loss_torch = torch.nn.functional.mse_loss(
-                    out_torch, target
-                ).mean()
+                loss_torch = torch.nn.functional.mse_loss(out_torch, target).mean()
                 loss_torch.backward()
                 gradA2 = A.grad
                 gradB2 = B.grad
@@ -81,18 +77,14 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
                 B.grad = None
 
             if req_grad[0]:
-                torch.testing.assert_close(
-                    gradA1, gradA2, atol=0.015, rtol=0.1
-                )
+                torch.testing.assert_close(gradA1, gradA2, atol=0.015, rtol=0.1)
             if req_grad[1]:
                 n = gradB1.numel()
                 idx = torch.isclose(gradB1, gradB2, atol=0.06, rtol=0.3)
                 assert (idx == 0).sum().item() < n * 0.1
                 idx = torch.isclose(gradB1, gradB2, atol=0.10, rtol=0.3)
                 assert (idx == 0).sum().item() < n * 0.02
-                torch.testing.assert_close(
-                    gradB1, gradB2, atol=0.18, rtol=0.3
-                )
+                torch.testing.assert_close(gradB1, gradB2, atol=0.18, rtol=0.3)
 
         # batched matrix multiply
         if funcs[0] in [torch.bmm, torch.matmul]:
@@ -119,9 +111,7 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
             n = out_bnb.numel()
             idx = torch.isclose(out_bnb, out_torch, atol=0.01, rtol=0.1)
             assert (idx == 0).sum().item() < n * 0.01
-            torch.testing.assert_close(
-                out_bnb, out_torch, atol=0.027, rtol=0.2
-            )
+            torch.testing.assert_close(out_bnb, out_torch, atol=0.027, rtol=0.2)
 
             if any(req_grad):
                 out_bnb.data.copy_(out_torch)
@@ -133,9 +123,7 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
                 A.grad = None
                 B.grad = None
 
-                loss_torch = torch.nn.functional.mse_loss(
-                    out_torch, target
-                ).mean()
+                loss_torch = torch.nn.functional.mse_loss(out_torch, target).mean()
                 loss_torch.backward()
                 gradA2 = A.grad
                 gradB2 = B.grad
@@ -143,9 +131,7 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
                 B.grad = None
 
             if req_grad[0]:
-                torch.testing.assert_close(
-                    gradA1, gradA2, atol=0.015, rtol=0.1
-                )
+                torch.testing.assert_close(gradA1, gradA2, atol=0.015, rtol=0.1)
             if req_grad[1]:
                 n = gradB1.numel()
                 idx = torch.isclose(gradB1, gradB2, atol=0.06, rtol=0.3)
@@ -192,9 +178,7 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
                 A.grad = None
                 B.grad = None
 
-                loss_torch = torch.nn.functional.mse_loss(
-                    out_torch, target
-                ).mean()
+                loss_torch = torch.nn.functional.mse_loss(out_torch, target).mean()
                 loss_torch.backward()
                 gradA2 = A.grad
                 gradB2 = B.grad
@@ -202,9 +186,7 @@ def test_matmul(dim1, dim2, dim3, dim4, funcs, dtype, req_grad: Tuple[bool, bool
                 B.grad = None
 
             if req_grad[0]:
-                torch.testing.assert_close(
-                    gradA1, gradA2, atol=0.015, rtol=0.1
-                )
+                torch.testing.assert_close(gradA1, gradA2, atol=0.015, rtol=0.1)
             if req_grad[1]:
                 n = gradB1.numel()
                 idx = torch.isclose(gradB1, gradB2, atol=0.06, rtol=0.3)
@@ -248,15 +230,11 @@ def test_matmullt(
 
         # normal multiply
         if funcs[0] in [torch.mm, torch.matmul]:
-            A = torch.randn(
-                size=dimA, device="cuda", requires_grad=req_grad[0], dtype=dtype
-            )
+            A = torch.randn(size=dimA, device="cuda", requires_grad=req_grad[0], dtype=dtype)
             if decomp == 6.0:
                 with torch.no_grad():
                     A[:, outlier_dim] = 6.0
-            B = torch.randn(
-                size=dimB, device="cuda", requires_grad=req_grad[1], dtype=dtype
-            )
+            B = torch.randn(size=dimB, device="cuda", requires_grad=req_grad[1], dtype=dtype)
             target = torch.randn(
                 size=(dim2, dim4),
                 device="cuda",
@@ -311,9 +289,7 @@ def test_matmullt(
                 if any(req_grad):
                     out_bnb.data.copy_(out_torch)
                     torch.cuda.synchronize()
-                    loss_bnb = torch.nn.functional.mse_loss(
-                        out_bnb, target
-                    ).mean()
+                    loss_bnb = torch.nn.functional.mse_loss(out_bnb, target).mean()
                     loss_bnb.backward()
                     gradA1 = A.grad
                     gradB1 = B.grad
@@ -323,9 +299,7 @@ def test_matmullt(
                         gradBias1 = bias.grad
                         bias.grad = None
 
-                    loss_torch = torch.nn.functional.mse_loss(
-                        out_torch, target
-                    ).mean()
+                    loss_torch = torch.nn.functional.mse_loss(out_torch, target).mean()
                     loss_torch.backward()
                     gradA2 = A.grad
                     gradB2 = B.grad
@@ -336,9 +310,7 @@ def test_matmullt(
                         bias.grad = None
 
                 if req_grad[0]:
-                    torch.testing.assert_close(
-                        gradA1, gradA2, atol=0.015, rtol=0.1
-                    )
+                    torch.testing.assert_close(gradA1, gradA2, atol=0.015, rtol=0.1)
                 if req_grad[1]:
                     n = gradB1.numel()
                     if dim2 > 0:
@@ -352,9 +324,7 @@ def test_matmullt(
                     assert (idx == 0).sum().item() <= n * 0.1
                     idx = torch.isclose(gradB1, gradB2, atol=0.10, rtol=0.3)
                     assert (idx == 0).sum().item() <= n * 0.02
-                    torch.testing.assert_close(
-                        gradB1, gradB2, atol=0.18, rtol=0.3
-                    )
+                    torch.testing.assert_close(gradB1, gradB2, atol=0.18, rtol=0.3)
 
                 if req_grad[2]:
                     torch.testing.assert_close(gradBias1, gradBias2)
@@ -516,6 +486,4 @@ def test_matmul_fp8( dim1, dim2, dim3, dim4, funcs, dtype, req_grad, transpose):
                     assert (idx == 0).sum().item() <= n * 0.02
                     grad_err = (gradB1-gradB2).abs().mean()
                     assert grad_err.item() < 0.003
-                    torch.testing.assert_close(
-                        gradB1, gradB2, atol=0.18, rtol=0.3
-                    )
+                    torch.testing.assert_close(gradB1, gradB2, atol=0.18, rtol=0.3)

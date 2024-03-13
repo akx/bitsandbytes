@@ -170,17 +170,11 @@ class Optimizer8bit(torch.optim.Optimizer):
         saved_groups = state_dict["param_groups"]
 
         if len(groups) != len(saved_groups):
-            raise ValueError(
-                "loaded state dict has a different number of "
-                "parameter groups"
-            )
+            raise ValueError("loaded state dict has a different number of parameter groups")
         param_lens = (len(g["params"]) for g in groups)
         saved_lens = (len(g["params"]) for g in saved_groups)
         if any(p_len != s_len for p_len, s_len in zip(param_lens, saved_lens)):
-            raise ValueError(
-                "loaded state dict contains a parameter group "
-                "that doesn't match the size of optimizer's group"
-            )
+            raise ValueError("loaded state dict contains a parameter group that doesn't match the size of optimizer's group")
 
         # Update the state
         id_map = {
@@ -248,9 +242,7 @@ class Optimizer8bit(torch.optim.Optimizer):
         for module, attr, config in self.mng.module_weight_config_triple:
             pmodule = getattr(module, attr)
             assert pmodule is not None
-            assert isinstance(pmodule, torch.Tensor) or isinstance(
-                pmodule, torch.Parameter
-            )
+            assert isinstance(pmodule, torch.Tensor) or isinstance(pmodule, torch.Parameter)
             found = False
             for gindex, group in enumerate(self.param_groups):
                 if found:
@@ -328,9 +320,7 @@ class Optimizer8bit(torch.optim.Optimizer):
         raise NotImplementedError("init_state method needs to be overridden")
 
     def update_step(self, group, p, gindex, pindex):
-        raise NotImplementedError(
-            "The update_step method needs to be overridden"
-        )
+        raise NotImplementedError("The update_step method needs to be overridden")
 
     def get_state_buffer(self, p, dtype=torch.float32):
         if not self.is_paged or p.numel() < 1e5:
@@ -414,13 +404,9 @@ class Optimizer2State(Optimizer8bit):
             betas = [float(b) for b in betas]
         for i in range(len(betas)):
             if not 0.0 <= betas[i] < 1.0:
-                raise ValueError(
-                    f"Invalid beta parameter at index {i}: {betas[i]}"
-                )
+                raise ValueError(f"Invalid beta parameter at index {i}: {betas[i]}")
         if not 0.0 <= weight_decay:
-            raise ValueError(
-                f"Invalid weight_decay value: {weight_decay}"
-            )
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super().__init__(params, defaults, optim_bits, is_paged)
 
@@ -449,9 +435,7 @@ class Optimizer2State(Optimizer8bit):
         elif config["optim_bits"] == 8:
             dtype = torch.uint8
         else:
-            raise NotImplementedError(
-                f'Amount of optimizer bits not supported: {config["optim_bits"]}'
-            )
+            raise NotImplementedError(f'Amount of optimizer bits not supported: {config["optim_bits"]}')
 
         if p.numel() < config["min_8bit_size"]:
             dtype = torch.float32
@@ -468,12 +452,8 @@ class Optimizer2State(Optimizer8bit):
             if state["step"] == 0:
                 if "dynamic" not in self.name2qmap:
                     self.fill_qmap()
-                self.name2qmap["dynamic"] = self.name2qmap["dynamic"].to(
-                    p.device
-                )
-                self.name2qmap["udynamic"] = self.name2qmap["udynamic"].to(
-                    p.device
-                )
+                self.name2qmap["dynamic"] = self.name2qmap["dynamic"].to(p.device)
+                self.name2qmap["udynamic"] = self.name2qmap["udynamic"].to(p.device)
 
             state["state1"] = self.get_state_buffer(p, dtype=torch.uint8)
             state["qmap1"] = self.name2qmap["dynamic"]
@@ -486,25 +466,13 @@ class Optimizer2State(Optimizer8bit):
                 blocks = n // 2048
                 blocks += 1 if n % 2048 > 0 else 0
 
-                state["absmax1"] = torch.zeros(
-                    (blocks,), dtype=torch.float32, device=p.device
-                )
-                state["absmax2"] = torch.zeros(
-                    (blocks,), dtype=torch.float32, device=p.device
-                )
+                state["absmax1"] = torch.zeros((blocks,), dtype=torch.float32, device=p.device)
+                state["absmax2"] = torch.zeros((blocks,), dtype=torch.float32, device=p.device)
             else:
-                state["max1"] = torch.zeros(
-                    (1,), dtype=torch.float32, device=p.device
-                )
-                state["new_max1"] = torch.zeros(
-                    (1,), dtype=torch.float32, device=p.device
-                )
-                state["max2"] = torch.zeros(
-                    (1,), dtype=torch.float32, device=p.device
-                )
-                state["new_max2"] = torch.zeros(
-                    (1,), dtype=torch.float32, device=p.device
-                )
+                state["max1"] = torch.zeros((1,), dtype=torch.float32, device=p.device)
+                state["new_max1"] = torch.zeros((1,), dtype=torch.float32, device=p.device)
+                state["max2"] = torch.zeros((1,), dtype=torch.float32, device=p.device)
+                state["new_max2"] = torch.zeros((1,), dtype=torch.float32, device=p.device)
 
         if config["percentile_clipping"] < 100:
             state["gnorm_vec"] = torch.zeros((100,), device=p.device)
@@ -524,7 +492,7 @@ class Optimizer2State(Optimizer8bit):
 
         if config["percentile_clipping"] < 100:
             current_gnorm, clip_value, gnorm_scale = F.percentile_clipping(
-                grad, state["gnorm_vec"], step, config["percentile_clipping"]
+                grad, state["gnorm_vec"], step, config["percentile_clipping"],
             )
         else:
             gnorm_scale = 1.0
@@ -656,13 +624,9 @@ class Optimizer1State(Optimizer8bit):
             raise ValueError(f"Invalid epsilon value: {eps}")
         for i in range(len(betas)):
             if not 0.0 <= betas[i] < 1.0:
-                raise ValueError(
-                    f"Invalid beta parameter at index {i}: {betas[i]}"
-                )
+                raise ValueError(f"Invalid beta parameter at index {i}: {betas[i]}")
         if not 0.0 <= weight_decay:
-            raise ValueError(
-                f"Invalid weight_decay value: {weight_decay}"
-            )
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super().__init__(params, defaults, optim_bits, is_paged)
 
@@ -691,9 +655,7 @@ class Optimizer1State(Optimizer8bit):
         elif config["optim_bits"] == 8:
             dtype = torch.uint8
         else:
-            raise NotImplementedError(
-                f'Amount of optimizer bits not supported: {config["optim_bits"]}'
-            )
+            raise NotImplementedError(f'Amount of optimizer bits not supported: {config["optim_bits"]}')
 
         if p.numel() < config["min_8bit_size"]:
             dtype = torch.float32
@@ -709,9 +671,7 @@ class Optimizer1State(Optimizer8bit):
             if state["step"] == 0:
                 if "dynamic" not in self.name2qmap:
                     self.fill_qmap()
-                self.name2qmap["dynamic"] = self.name2qmap["dynamic"].to(
-                    p.device
-                )
+                self.name2qmap["dynamic"] = self.name2qmap["dynamic"].to(p.device)
 
             state["state1"] = self.get_state_buffer(p, dtype=torch.uint8)
             state["qmap1"] = self.name2qmap["dynamic"]
@@ -721,16 +681,10 @@ class Optimizer1State(Optimizer8bit):
                 blocks = n // 2048
                 blocks += 1 if n % 2048 > 0 else 0
 
-                state["absmax1"] = torch.zeros(
-                    (blocks,), dtype=torch.float32, device=p.device
-                )
+                state["absmax1"] = torch.zeros((blocks,), dtype=torch.float32, device=p.device)
             else:
-                state["max1"] = torch.zeros(
-                    (1,), dtype=torch.float32, device=p.device
-                )
-                state["new_max1"] = torch.zeros(
-                    (1,), dtype=torch.float32, device=p.device
-                )
+                state["max1"] = torch.zeros((1,), dtype=torch.float32, device=p.device)
+                state["new_max1"] = torch.zeros((1,), dtype=torch.float32, device=p.device)
 
         if config["percentile_clipping"] < 100:
             state["gnorm_vec"] = torch.zeros((100,), device=p.device)

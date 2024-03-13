@@ -37,9 +37,7 @@ class _switchback_global(torch.autograd.Function):
 
         # matmult, fused dequant and add bias
         # call "mixed" because we are mixing rowwise quantized and global quantized
-        return int8_matmul_mixed_dequantize(
-            X_int8, W_int8.t(), state_X, state_W, bias
-        ).view(*X_3D.size()[:-1], -1)
+        return int8_matmul_mixed_dequantize(X_int8, W_int8.t(), state_X, state_W, bias).view(*X_3D.size()[:-1], -1)
 
     @staticmethod
     def backward(ctx, G_3D):
@@ -55,9 +53,7 @@ class _switchback_global(torch.autograd.Function):
             # so we transpose once then call .t() in the matmul
             G_int8, state_G = quantize_rowwise(G)
             W_int8, state_W = quantize_global_transpose(W)
-            grad_X = int8_matmul_mixed_dequantize(G_int8, W_int8.t(), state_G, state_W, None).view(
-                *G_3D.size()[:-1], -1
-            )
+            grad_X = int8_matmul_mixed_dequantize(G_int8, W_int8.t(), state_G, state_W, None).view(*G_3D.size()[:-1], -1)
         if ctx.needs_input_grad[1]:
             # backward pass uses standard weight grad
             grad_W = torch.matmul(G.t(), X.to(G.dtype))
@@ -81,9 +77,7 @@ class _switchback_vectorrize(torch.autograd.Function):
 
         # matmult, fused dequant and add bias
         # call kernel which expects rowwise quantized X and W
-        return int8_matmul_rowwise_dequantize(
-            X_int8, W_int8.t(), state_X, state_W, bias
-        ).view(*X_3D.size()[:-1], -1)
+        return int8_matmul_rowwise_dequantize(X_int8, W_int8.t(), state_X, state_W, bias).view(*X_3D.size()[:-1], -1)
 
     @staticmethod
     def backward(ctx, G_3D):
@@ -98,9 +92,7 @@ class _switchback_vectorrize(torch.autograd.Function):
             # we call .t() for weight later because only A @ B^T is supported
             G_int8, state_G = quantize_rowwise(G)
             W_int8, state_W = quantize_columnwise_and_transpose(W)
-            grad_X = int8_matmul_rowwise_dequantize(G_int8, W_int8.t(), state_G, state_W, None).view(
-                *G_3D.size()[:-1], -1
-            )
+            grad_X = int8_matmul_rowwise_dequantize(G_int8, W_int8.t(), state_G, state_W, None).view(*G_3D.size()[:-1], -1)
         if ctx.needs_input_grad[1]:
             # backward pass uses standard weight grad
             grad_W = torch.matmul(G.t(), X.to(G.dtype))
@@ -127,9 +119,7 @@ class _switchback_global_mem_efficient(torch.autograd.Function):
 
         # matmult, fused dequant and add bias
         # call "mixed" because we are mixing rowwise quantized and global quantized
-        return int8_matmul_mixed_dequantize(
-            X_int8, W_int8.t(), state_X, state_W, bias
-        ).view(*X_3D_sz[:-1], -1)
+        return int8_matmul_mixed_dequantize(X_int8, W_int8.t(), state_X, state_W, bias).view(*X_3D_sz[:-1], -1)
 
     @staticmethod
     def backward(ctx, G_3D):
@@ -151,9 +141,7 @@ class _switchback_global_mem_efficient(torch.autograd.Function):
             G_int8, state_G = quantize_rowwise(G)
             del G
             W_int8 = W_int8.t().contiguous()
-            grad_X = int8_matmul_mixed_dequantize(G_int8, W_int8.t(), state_G, state_W, None).view(
-                *G_3D_sz[:-1], -1
-            )
+            grad_X = int8_matmul_mixed_dequantize(G_int8, W_int8.t(), state_G, state_W, None).view(*G_3D_sz[:-1], -1)
 
         return grad_X, grad_W, grad_bias
 
@@ -219,13 +207,9 @@ class SwitchBackLinear(nn.Linear):
             X_int8, state_X = quantize_rowwise(X)
 
             if self.vector_wise_quantization:
-                return int8_matmul_rowwise_dequantize(
-                    X_int8, self.W_int8.t(), state_X, self.state_W, self.bias
-                ).view(*x.size()[:-1], -1)
+                return int8_matmul_rowwise_dequantize(X_int8, self.W_int8.t(), state_X, self.state_W, self.bias).view(*x.size()[:-1], -1)
             else:
-                return int8_matmul_mixed_dequantize(
-                    X_int8, self.W_int8.t(), state_X, self.state_W, self.bias
-                ).view(*x.size()[:-1], -1)
+                return int8_matmul_mixed_dequantize(X_int8, self.W_int8.t(), state_X, self.state_W, self.bias).view(*x.size()[:-1], -1)
 
 SwitchBackLinearGlobal = partial(SwitchBackLinear, vector_wise_quantization=False)
 SwitchBackLinearGlobalMemEfficient = partial(SwitchBackLinear, vector_wise_quantization=False, mem_efficient=True)

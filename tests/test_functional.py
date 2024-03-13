@@ -98,9 +98,7 @@ def teardown():
     pass
 
 
-@pytest.mark.parametrize(
-    "dtype", [torch.float32, torch.float16], ids=["float", "half"]
-)
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16], ids=["float", "half"])
 def test_estimate_quantiles(dtype):
     A = torch.rand(1024, 1024, device="cuda")
     A = A.to(dtype)
@@ -211,9 +209,7 @@ def test_dynamic_blockwise_quantization(dtype, nested, blocksize, signed):
 
 
 
-@pytest.mark.parametrize(
-    "gtype", [torch.float32, torch.float16], ids=["float", "half"]
-)
+@pytest.mark.parametrize("gtype", [torch.float32, torch.float16], ids=["float", "half"])
 def test_percentile_clipping(gtype):
     gnorm_vec1 = torch.zeros(100, device="cuda")
     gnorm_vec2 = torch.zeros(100, device="cuda")
@@ -223,9 +219,7 @@ def test_percentile_clipping(gtype):
     for i in range(k):
         step += 1
         g = torch.randn(n, n, dtype=gtype, device="cuda")
-        gnorm1, clip2, gnorm_scale = F.percentile_clipping(
-            g, gnorm_vec2, step, percentile=percentile
-        )
+        gnorm1, clip2, gnorm_scale = F.percentile_clipping(g, gnorm_vec2, step, percentile=percentile)
         assert gnorm_scale == 1.0 if gnorm1 < clip2 else clip2 / gnorm1
 
         gnorm2 = torch.norm(g.float())
@@ -321,9 +315,7 @@ def test_approx_igemm(dim1, dim2, quant_methods, batched):
             B = torch.normal(0, 0.5, size=(dim2, dim1), device="cuda")
             maxA, Ac = quant_methods[0](A, 1)
             maxB, Bc = quant_methods[1](B, 0)
-        torch.testing.assert_close(
-            quant_methods[2](maxA, Ac), A, atol=0.025, rtol=0.05
-        )
+        torch.testing.assert_close(quant_methods[2](maxA, Ac), A, atol=0.025, rtol=0.05)
         if batched:
             out2 = torch.bmm(A, B)
             C = torch.bmm(Ac.float(), Bc.float())
@@ -410,16 +402,10 @@ def test_dim3_igemm(seq_dim, hidden_dim, batch_dim):
     hidden_dim = hidden_dim - (hidden_dim % 32)
     batch_dim = batch_dim - (batch_dim % 2)
     for i in range(25):
-        A = torch.randint(
-            -128, 127, size=(batch_dim, seq_dim, hidden_dim), device="cuda"
-        ).to(torch.int8)
-        B = torch.randint(
-            -128, 127, size=(batch_dim, seq_dim, 1024), device="cuda"
-        ).to(torch.int8)
+        A = torch.randint(-128, 127, size=(batch_dim, seq_dim, hidden_dim), device="cuda").to(torch.int8)
+        B = torch.randint(-128, 127, size=(batch_dim, seq_dim, 1024), device="cuda").to(torch.int8)
         out2 = torch.einsum("bsi, bso->io", A.float(), B.float())
-        iout = torch.empty(
-            A.shape[2], B.shape[2], dtype=torch.int32, device=A.device
-        )
+        iout = torch.empty(A.shape[2], B.shape[2], dtype=torch.int32, device=A.device)
         out = F.igemm(A, B, out=iout)
 
         torch.testing.assert_close(out.float(), out2)
@@ -444,9 +430,7 @@ def test_minmax_igemm(seq_dim, hidden_dim, batch_dim, transpose):
     errs2 = []
     relerrs2 = []
     for i in range(k):
-        A = torch.normal(
-            0.0, 0.5, size=(batch_dim, seq_dim, hidden_dim), device="cuda"
-        )
+        A = torch.normal(0.0, 0.5, size=(batch_dim, seq_dim, hidden_dim), device="cuda")
         if transpose:
             B = torch.normal(0, 0.5, size=(256, hidden_dim), device="cuda")
         else:
@@ -523,9 +507,7 @@ def test_ibmm(dim1, dim2, dim3, dim4, transpose):
             out2 = torch.bmm(A.permute([0, 2, 1]).float(), B.float())
             out = F.igemm(A.permute([0, 2, 1]), B)
         elif transpose[0] and transpose[1]:
-            out2 = torch.bmm(
-                A.permute([0, 2, 1]).float(), B.permute([0, 2, 1]).float()
-            )
+            out2 = torch.bmm(A.permute([0, 2, 1]).float(), B.permute([0, 2, 1]).float())
             out = F.igemm(A.permute([0, 2, 1]), B.permute([0, 2, 1]))
         torch.testing.assert_close(out.float(), out2.float())
 
@@ -565,9 +547,7 @@ def test_nvidia_transform(dim1, dim2, dim3, dims, dtype, orderA, orderOut, trans
     if dims == 2:
         A = torch.randint(-128, 127, size=(dim1, dim2), device="cuda").to(dtype)
     elif dims == 3:
-        A = torch.randint(-128, 127, size=(dim1, dim2, dim3), device="cuda").to(
-            dtype
-        )
+        A = torch.randint(-128, 127, size=(dim1, dim2, dim3), device="cuda").to(dtype)
 
     out, S = F.nvidia_transform(A, to_order=orderOut)
 
@@ -611,9 +591,7 @@ def test_nvidia_transform(dim1, dim2, dim3, dims, dtype, orderA, orderOut, trans
                 # torch.testing.assert_close(A.flatten()[i+j], out.flatten()[row2+ col2+block_offset])
 
     if orderOut == "col32":
-        out2, S = F.nvidia_transform(
-            out, from_order=orderOut, to_order="row", state=S
-        )
+        out2, S = F.nvidia_transform(out, from_order=orderOut, to_order="row", state=S)
         torch.testing.assert_close(A, out2)
 
 
@@ -626,16 +604,10 @@ def test_nvidia_transform(dim1, dim2, dim3, dims, dtype, orderA, orderOut, trans
 def test_igemmlt_int(dim1, dim2, dim3, dim4, dims, ldb):
     for i in range(k):
         if dims == 2:
-            A = torch.randint(-128, 127, size=(dim1, dim3), device="cuda").to(
-                torch.int8
-            )
+            A = torch.randint(-128, 127, size=(dim1, dim3), device="cuda").to(torch.int8)
         elif dims == 3:
-            A = torch.randint(
-                -128, 127, size=(dim1, dim2, dim3), device="cuda"
-            ).to(torch.int8)
-        B = torch.randint(-128, 127, size=(dim4, dim3), device="cuda").to(
-            torch.int8
-        )
+            A = torch.randint(-128, 127, size=(dim1, dim2, dim3), device="cuda").to(torch.int8)
+        B = torch.randint(-128, 127, size=(dim4, dim3), device="cuda").to(torch.int8)
         C1 = torch.matmul(A.float(), B.t().float())
 
         A2, SA = F.transform(A, "col32")
@@ -645,9 +617,7 @@ def test_igemmlt_int(dim1, dim2, dim3, dim4, dims, ldb):
         torch.testing.assert_close(C1, C3.float())
 
         # transpose
-        B = torch.randint(-128, 127, size=(dim3, dim4), device="cuda").to(
-            torch.int8
-        )
+        B = torch.randint(-128, 127, size=(dim3, dim4), device="cuda").to(torch.int8)
         C1 = torch.matmul(A.float(), B.float())
 
         B2t, SBt = F.transform(B, "col_turing", transpose=True)
@@ -667,9 +637,7 @@ def test_igemmlt_half(dim1, dim2, dim3, dim4, dims):
         if dims == 2:
             A = torch.normal(0, 0.5, size=(dim1, dim3), device="cuda").half()
         elif dims == 3:
-            A = torch.normal(
-                0, 0.5, size=(dim1, dim2, dim3), device="cuda"
-            ).half()
+            A = torch.normal(0, 0.5, size=(dim1, dim2, dim3), device="cuda").half()
         B = torch.randn((dim4, dim3), device="cuda").half()
         torch.nn.init.xavier_uniform_(B)
         C1 = torch.matmul(A, B.t())
@@ -917,9 +885,7 @@ def test_colrow_absmax(dim1, dim2, dims):
         else:
             assert False
 
-        row_stats2, col_stats2, nnz_block_ptr2 = F.get_colrow_absmax(
-            A, threshold=threshold
-        )
+        row_stats2, col_stats2, nnz_block_ptr2 = F.get_colrow_absmax(A, threshold=threshold)
 
         A_blocked = einops.rearrange(
             torch.abs(A),
@@ -939,9 +905,7 @@ def test_colrow_absmax(dim1, dim2, dims):
         torch.testing.assert_close(row_stats1_trunc, row_stats2)
         torch.testing.assert_close(nnz_block_ptr1.int(), nnz_block_ptr2)
 
-        row_stats2, col_stats2, nnz_block_ptr2 = F.get_colrow_absmax(
-            A, threshold=0.0
-        )
+        row_stats2, col_stats2, nnz_block_ptr2 = F.get_colrow_absmax(A, threshold=0.0)
 
         torch.testing.assert_close(col_stats1, col_stats2)
         torch.testing.assert_close(row_stats1, row_stats2)
@@ -973,14 +937,10 @@ def test_double_quant(dim1, dim2):
         # allow for 1:500 error due to rounding differences
         min_error = 1 / 500
         if num_not_close_cols > (min_error * n):
-            print(
-                f"Min error exceeded {num_not_close_cols} elements are different. Error: {num_not_close_cols/n:.4f}"
-            )
+            print(f"Min error exceeded {num_not_close_cols} elements are different. Error: {num_not_close_cols/n:.4f}")
             assert False
         if num_not_close_rows > (min_error * n):
-            print(
-                f"Min error exceeded {num_not_close_rows} elements are different. Error: {num_not_close_rows/n:.4f}"
-            )
+            print(f"Min error exceeded {num_not_close_rows} elements are different. Error: {num_not_close_rows/n:.4f}")
             assert False
 
         torch.testing.assert_close(Srow.flatten().float(), statsA)
@@ -1067,9 +1027,7 @@ def test_igemmlt_row_scale(dim1, dim4, inner):
 
         c = 10.0 * inner * scale
         row_scale = torch.ones_like(maxA) / c
-        outC32, SC = F.igemmlt(
-            A2, B2, SA, SB, dtype=torch.int8, row_scale=row_scale
-        )
+        outC32, SC = F.igemmlt(A2, B2, SA, SB, dtype=torch.int8, row_scale=row_scale)
         C3, S = F.nvidia_transform(outC32, "row", state=SC)
         maxval = torch.abs(C3).max()
         if maxval == 127:
@@ -1150,9 +1108,7 @@ def test_row_scale_bench(dim1, dim4, inner):
     torch.cuda.synchronize()
     t0 = time.time()
     for i in range(k):
-        outC32, SC = F.igemmlt(
-            A2, B2, SA, SB, dtype=torch.int8, row_scale=row_scale
-        )
+        outC32, SC = F.igemmlt(A2, B2, SA, SB, dtype=torch.int8, row_scale=row_scale)
     torch.cuda.synchronize()
     print("row-wise", time.time() - t0)
 
@@ -1177,13 +1133,9 @@ def test_row_scale_bench(dim1, dim4, inner):
 def test_transform(dim1, dim2, dim3, dims, dtype, orderA, orderOut, transpose):
     for i in range(k):
         if dims == 2:
-            A = torch.randint(10, 99, size=(dim1, dim2), device="cuda").to(
-                dtype
-            )
+            A = torch.randint(10, 99, size=(dim1, dim2), device="cuda").to(dtype)
         elif dims == 3:
-            A = torch.randint(
-                10, 99, size=(dim1, dim2, dim3), device="cuda"
-            ).to(dtype)
+            A = torch.randint(10, 99, size=(dim1, dim2, dim3), device="cuda").to(dtype)
 
         A.view(-1)[-1] = -1
         if transpose:
@@ -1224,23 +1176,17 @@ def test_coo_double_quant(dim1, dim2):
 
         idx = torch.abs(A) >= threshold
         CA2, CAt, statsA, statsAt, coo_tensor = F.double_quant(A)
-        CA, CAt, statsA, statsAt, coo_tensor = F.double_quant(
-            A, threshold=threshold
-        )
+        CA, CAt, statsA, statsAt, coo_tensor = F.double_quant(A, threshold=threshold)
 
         if coo_tensor is not None:
             A1 = A * idx
             A2 = torch.zeros_like(A)
-            A2[
-                coo_tensor.rowidx.long(), coo_tensor.colidx.long()
-            ] = coo_tensor.values
+            A2[coo_tensor.rowidx.long(), coo_tensor.colidx.long()] = coo_tensor.values
             torch.testing.assert_close(A1, A2)
 
             A1 = A * (idx == 0)
             A2 = (CA.float() * statsA.unsqueeze(1) / 127).half()
-            torch.testing.assert_close(
-                A * (idx == 0), A2, rtol=0.05, atol=1.5e-2
-            )
+            torch.testing.assert_close(A * (idx == 0), A2, rtol=0.05, atol=1.5e-2)
 
 
 @pytest.mark.parametrize("dim1", get_test_dims(1, 1 * 1024, n=2), ids=id_formatter("dim1"))
@@ -1261,9 +1207,7 @@ def test_spmm_coo(dim1, dim2, transposed_B):
         nnz = (idx == 1).sum().item()
         rows, cols = torch.where(idx)
         values = A[idx]
-        cooA = F.COOSparseTensor(
-            A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values
-        )
+        cooA = F.COOSparseTensor(A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values)
         A2 = A * idx
 
         if transposed_B:
@@ -1303,9 +1247,7 @@ def test_spmm_bench():
     print(nnz / idx.numel())
     rows, cols = torch.where(idx)
     values = A[idx]
-    cooA = F.COOSparseTensor(
-        A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values
-    )
+    cooA = F.COOSparseTensor(A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values)
 
     for i in range(10):
         out2 = F.spmm_coo(cooA, B)
@@ -1339,9 +1281,7 @@ def test_integrated_sparse_decomp(dim1, dim2):
         out1_32, Sout1_32 = F.igemmlt(C32A, CTw1, SA, Sw1)
         out2 = F.mm_dequant(out1_32, Sout1_32, statsA, statsw1)
 
-        CA, CAt, statsA, statsAt, coo_tensor = F.double_quant(
-            A, threshold=threshold
-        )
+        CA, CAt, statsA, statsAt, coo_tensor = F.double_quant(A, threshold=threshold)
         C32A, SA = F.transform(CA, "col32")
 
         out1_32, Sout1_32 = F.igemmlt(C32A, CTw1, SA, Sw1)
@@ -1396,9 +1336,7 @@ def test_spmm_coo_very_sparse(dim1, dim2, dtype, out_func):
     nnz = (idx == 1).sum().item()
     rows, cols = torch.where(idx)
     values = A[idx]
-    cooA = F.COOSparseTensor(
-        A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values
-    )
+    cooA = F.COOSparseTensor(A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values)
     A2 = A * idx
     out1 = torch.matmul(A2.half(), B.half())
     out = out_func(out1.shape, dtype=torch.float16, device=out1.device)
@@ -1413,9 +1351,7 @@ def test_spmm_coo_very_sparse(dim1, dim2, dtype, out_func):
     std = out1.std()
     out1 /= std
     out2 /= std
-    assert_all_approx_close(
-        out1, out2.half(), rtol=0.01, atol=3.0e-2, count=count
-    )
+    assert_all_approx_close(out1, out2.half(), rtol=0.01, atol=3.0e-2, count=count)
     # assert_all_approx_close(out1, out2.half(), rtol=0.05, atol=0.01, count=count)
 
     idx_col = torch.randint(0, A2.shape[-1], size=(15,))
@@ -1443,9 +1379,7 @@ def test_coo2csr():
     nnz = (idx == 1).sum().item()
     rows, cols = torch.where(idx)
     values = A[idx]
-    cooA = F.COOSparseTensor(
-        A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values
-    )
+    cooA = F.COOSparseTensor(A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values)
     A2 = A * idx
     csrA = F.coo2csr(cooA)
     counts = csrA.rowptr[1:] - csrA.rowptr[:-1]
@@ -1463,9 +1397,7 @@ def test_coo2csc():
     nnz = (idx == 1).sum().item()
     rows, cols = torch.where(idx)
     values = A[idx]
-    cooA = F.COOSparseTensor(
-        A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values
-    )
+    cooA = F.COOSparseTensor(A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values)
     A2 = A * idx
     cscA = F.coo2csc(cooA)
     counts = cscA.colptr[1:] - cscA.colptr[:-1]
@@ -1499,9 +1431,7 @@ def test_spmm_coo_dequant(dim1, dim2, dtype):
     nnz = (idx == 1).sum().item()
     rows, cols = torch.where(idx)
     values = A[idx]
-    cooA = F.COOSparseTensor(
-        A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values
-    )
+    cooA = F.COOSparseTensor(A.shape[0], A.shape[1], nnz, rows.int(), cols.int(), values)
     A2 = A * idx
     out2 = F.spmm_coo_very_sparse(cooA, CBt, dequant_stats=statsBt)
     out1 = torch.matmul(A2, B.half())

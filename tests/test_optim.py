@@ -193,13 +193,8 @@ def test_global_config(dim1, dim2, gtype):
     eps = 1e-8
 
     bnb.optim.GlobalOptimManager.get_instance().initialize()
-    bnb.optim.GlobalOptimManager.get_instance().override_config(
-        p3, "optim_bits", 8
-    )
-
-    bnb.optim.GlobalOptimManager.get_instance().register_parameters(
-        [p1, p2, p3]
-    )
+    bnb.optim.GlobalOptimManager.get_instance().override_config(p3, "optim_bits", 8)
+    bnb.optim.GlobalOptimManager.get_instance().register_parameters([p1, p2, p3])
     p1 = p1.cuda()
     p2 = p2.cuda()
     p3 = p3.cuda()
@@ -295,9 +290,7 @@ def test_optimizer8bit(dim1, dim2, gtype, optim_name):
                     A=bnb_optimizer.state[p2][name2],
                 )
             num_not_close = (
-                torch.isclose(
-                    torch_optimizer.state[p1][name1], s1, atol=atol, rtol=rtol
-                )
+                torch.isclose(torch_optimizer.state[p1][name1], s1, atol=atol, rtol=rtol)
                 == 0
             )
             #assert num_not_close.sum().item() < 20
@@ -316,9 +309,7 @@ def test_optimizer8bit(dim1, dim2, gtype, optim_name):
         relerrors.append(relerr.mean().item())
 
         if i % 10 == 0 and i > 0:
-            for (name1, name2, qmap, max_val), s in zip(
-                str2statenames[optim_name], dequant_states
-            ):
+            for (name1, name2, qmap, max_val), s in zip(str2statenames[optim_name], dequant_states):
                 s1cpy = s.clone()
                 raws1cpy = bnb_optimizer.state[p2][name2].clone()
                 qmap1 = bnb_optimizer.state[p2][qmap].clone()
@@ -401,9 +392,7 @@ def test_adam_percentile_clipping(dim1, dim2, gtype, optim_bits):
         g2 = g1.clone()
         p2.grad = g2
 
-        current_gnorm, clip_val, gnorm_scale = F.percentile_clipping(
-            g1, gnorm_vec, step, 5
-        )
+        current_gnorm, clip_val, gnorm_scale = F.percentile_clipping(g1, gnorm_vec, step, 5)
         g1 = (g1.float() * gnorm_scale).to(gtype)
         p1.grad = g1
 
